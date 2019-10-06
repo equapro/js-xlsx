@@ -31,16 +31,34 @@ function evert_arr(obj/*:any*/)/*:EvertArrType*/ {
 	return o;
 }
 
+/*
+ * WORKAROUND heure été/hivers + erreur arrondi
+ * ----------------------------------------------------
+ * @see https://github.com/SheetJS/js-xlsx/issues/1212
+ * @see https://github.com/SheetJS/ssf/pull/38
+ */
 var basedate = new Date(1899, 11, 30, 0, 0, 0); // 2209161600000
-var dnthresh = basedate.getTime() + (new Date().getTimezoneOffset() - basedate.getTimezoneOffset()) * 60000;
 function datenum(v/*:Date*/, date1904/*:?boolean*/)/*:number*/ {
 	var epoch = v.getTime();
 	if(date1904) epoch -= 1462*24*60*60*1000;
-	return (epoch - dnthresh) / (24 * 60 * 60 * 1000);
+    var dnthresh = basedate.getTime() + (v.getTimezoneOffset() - basedate.getTimezoneOffset()) * 60000;
+
+    var mins = ((new Date('Dec 31, 1900 00:00:00')).getTime() - (new Date('Dec 31, 1900 00:00:00 GMT+00:00')).getTime())/60000;
+    var delta = Number((60 * (mins - Number(mins.toFixed(0)))).toFixed(0)) * 1000;
+
+
+    return (epoch - dnthresh + delta) / (24 * 60 * 60 * 1000);
 }
+
+var refdate = new Date();
+var dnthresh = basedate.getTime() + (refdate.getTimezoneOffset() - basedate.getTimezoneOffset()) * 60000;
+var refoffset = refdate.getTimezoneOffset();
 function numdate(v/*:number*/)/*:Date*/ {
 	var out = new Date();
 	out.setTime(v * 24 * 60 * 60 * 1000 + dnthresh);
+	if (out.getTimezoneOffset() !== refoffset) {
+		out.setTime(out.getTime() + (out.getTimezoneOffset() - refoffset) * 60000);
+	}
 	return out;
 }
 
